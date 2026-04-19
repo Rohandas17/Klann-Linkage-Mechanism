@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Klann Walking Mechanism Simulator</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+
+  :root {
+    --bg: #0a0c10;
+    --panel: #0f1318;
+    --border: #1e2d3d;
+    --accent: #00d4ff;
+    --accent2: #ff6b35;
+    --accent3: #7fff00;
+    --text: #c8d6e5;
+    --muted: #4a6278;
+    --link-color: #00d4ff;
+    --crank-color: #ff6b35;
+    --coupler-color: #ffd700;
+    --rocker-color: #7fff00;
+    --trace-color: rgba(0,212,255,0.6);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    padding: 18px 32px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: linear-gradient(90deg, #0f1318 60%, #0a1520 100%);
+  }
+
+  header h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 900;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+    text-shadow: 0 0 20px rgba(0,212,255,0.4);
+  }
+
+  header span {
+    font-size: 0.75rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+
+  .badge {
+    margin-left: auto;
+    background: rgba(0,212,255,0.08);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 4px 12px;
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    border-radius: 2px;
+  }
+
+  main {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    flex: 1;
+    gap: 0;
+  }
+
+  .sidebar {
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    padding: 20px 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .section-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.6rem;
+    letter-spacing: 0.3em;
+    color: var(--muted);
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+  }
+
+  .param-group { display: flex; flex-direction: column; gap: 10px; }
+
+  .param-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .param-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.72rem;
+  }
+
+  .param-label span:first-child { color: var(--text); }
+
+  .param-val {
+    color: var(--accent);
+    font-weight: bold;
+    min-width: 42px;
+    text-align: right;
+  }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 8px rgba(0,212,255,0.6);
+    transition: transform 0.1s;
+  }
+
+  input[type=range]:hover::-webkit-slider-thumb { transform: scale(1.2); }
+
+  .controls {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  button {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    border-radius: 2px;
+  }
+
+  button:hover { background: rgba(0,212,255,0.08); border-color: var(--accent); color: var(--accent); }
+  button.primary { background: rgba(0,212,255,0.12); border-color: var(--accent); color: var(--accent); }
+  button.primary:hover { background: rgba(0,212,255,0.22); }
+  button.danger { border-color: var(--accent2); color: var(--accent2); }
+  button.danger:hover { background: rgba(255,107,53,0.1); }
+
+  .metrics-box {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .metric {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    padding-bottom: 8px;
+  }
+
+  .metric:last-child { border-bottom: none; padding-bottom: 0; }
+
+  .metric-label { font-size: 0.65rem; color: var(--muted); letter-spacing: 0.1em; }
+
+  .metric-value {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--accent3);
+    text-shadow: 0 0 12px rgba(127,255,0,0.3);
+  }
+
+  .metric-unit { font-size: 0.6rem; color: var(--muted); margin-left: 3px; }
+
+  .canvas-area {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    flex: 1;
+  }
+
+  .canvas-toolbar {
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--panel);
+    font-size: 0.7rem;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted);
+  }
+
+  .legend-dot {
+    width: 10px;
+    height: 3px;
+    border-radius: 2px;
+  }
+
+  .speed-control {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+
+  .speed-control input[type=range] { width: 80px; }
+
+  .status-bar {
+    padding: 6px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--panel);
+    font-size: 0.62rem;
+    color: var(--muted);
+    display: flex;
+    gap: 24px;
+    letter-spacing: 0.1em;
+  }
+
+  .status-item span { color: var(--accent); }
+
+  @media (max-width: 800px) {
+    main { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+    .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>KLANN LINKAGE SIM</h1>
+    <div style="margin-top:3px"><span>6-BAR WALKING MECHANISM TRAJECTORY ANALYZER</span></div>
+  </div>
+  <div class="badge">v2.0 LIVE</div>
+</header>
+
+<main>
+  <aside class="sidebar">
+
+    <div>
+      <div class="section-title">Link Lengths (px)</div>
+      <div class="param-group">
+        <div class="param-row">
+          <div class="param-label"><span>L1 — Frame (Fixed)</span><span class="param-val" id="val-L1">50</span></div>
+          <input type="range" id="L1" min="20" max="100" step="1" value="50">
+        </div>
+        <div class="param-row">
+          <div class="param-label"><span>L2 — Crank</span><span class="param-val" id="val-L2">20</span></div>
+          <input type="range" id="L2" min="8" max="60" step="1" value="20">
+        </div>
+        <div class="param-row">
+          <div class="param-label"><span>L3 — Coupler</span><span class="param-val" id="val-L3">50</span></div>
+          <input type="range" id="L3" min="20" max="120" step="1" value="50">
+        </div>
+        <div class="param-row">
+          <div class="param-label"><span>L4 — Rocker A</span><span class="param-val" id="val-L4">55</span></div>
+          <input type="range" id="L4" min="20" max="130" step="1" value="55">
+        </div>
+        <div class="param-row">
+          <div class="param-label"><span>L5 — Coupler 2</span><span class="param-val" id="val-L5">40</span></div>
+          <input type="range" id="L5" min="15" max="100" step="1" value="40">
+        </div>
+        <div class="param-row">
+          <div class="param-label"><span>L6 — Rocker B</span><span class="param-val" id="val-L6">65</span></div>
+          <input type="range" id="L6" min="25" max="150" step="1" value="65">
+        </div>
+        <div class="param-row">
+          <div class="param-label"><span>L7 — Foot Rod</span><span class="param-val" id="val-L7">35</span></div>
+          <input type="range" id="L7" min="10" max="90" step="1" value="35">
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-title">Display Options</div>
+      <div class="param-group">
+        <div class="param-row">
+          <div class="param-label"><span>Trace Length</span><span class="param-val" id="val-trace">360</span>°</div>
+          <input type="range" id="traceLen" min="30" max="720" step="30" value="360">
+        </div>
+        <div class="param-row">
+          <div class="param-label"><span>Ground Level Offset</span><span class="param-val" id="val-ground">0</span></div>
+          <input type="range" id="groundOff" min="-80" max="80" step="5" value="0">
+        </div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="section-title">Controls</div>
+      <button class="primary" id="btnPlay">⏵ PLAY</button>
+      <button id="btnStep">⏭ STEP (+5°)</button>
+      <button id="btnReset">↺ RESET ANGLE</button>
+      <button class="danger" id="btnClearTrace">✕ CLEAR TRACE</button>
+    </div>
+
+    <div>
+      <div class="section-title">Gait Metrics</div>
+      <div class="metrics-box">
+        <div class="metric">
+          <div class="metric-label">STEP LENGTH</div>
+          <div><span class="metric-value" id="m-steplen">—</span><span class="metric-unit">px</span></div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">STEP HEIGHT</div>
+          <div><span class="metric-value" id="m-stepht">—</span><span class="metric-unit">px</span></div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">STRIDE DEPTH</div>
+          <div><span class="metric-value" id="m-stride">—</span><span class="metric-unit">px</span></div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">ASPECT RATIO</div>
+          <div><span class="metric-value" id="m-ratio">—</span></div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">FOOT POINTS</div>
+          <div><span class="metric-value" id="m-pts">0</span></div>
+        </div>
+      </div>
+    </div>
+
+  </aside>
+
+  <div class="canvas-area">
+    <div class="canvas-toolbar">
+      <div class="legend-item"><div class="legend-dot" style="background:#ff6b35"></div>Crank</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ffd700"></div>Coupler</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#7fff00"></div>Rocker</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#00d4ff;opacity:0.7"></div>Foot Trace</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ff4444"></div>Ground Level</div>
+      <div class="speed-control">
+        <span>SPEED</span>
+        <input type="range" id="speed" min="1" max="10" step="1" value="3">
+        <span id="val-speed" style="color:#00d4ff">3×</span>
+      </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <div class="status-bar">
+      <div class="status-item">ANGLE <span id="st-angle">0°</span></div>
+      <div class="status-item">CRANK RPM <span id="st-rpm">—</span></div>
+      <div class="status-item">FOOT X <span id="st-fx">—</span></div>
+      <div class="status-item">FOOT Y <span id="st-fy">—</span></div>
+      <div class="status-item">STATUS <span id="st-status" style="color:#7fff00">READY</span></div>
+    </div>
+  </div>
+</main>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+let animRunning = false;
+let animId = null;
+let crankAngle = 0;
+let tracePoints = [];
+let allCyclePoints = [];
+let stepLen = null, stepHt = null, strideDepth = null;
+let lastTime = 0;
+const TARGET_FPS = 60;
+
+// Resize canvas
+function resizeCanvas() {
+  const area = canvas.parentElement;
+  const toolbar = area.querySelector('.canvas-toolbar');
+  const statusBar = area.querySelector('.status-bar');
+  canvas.width = area.clientWidth;
+  canvas.height = area.clientHeight - toolbar.offsetHeight - statusBar.offsetHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', () => { resizeCanvas(); tracePoints = []; draw(); });
+
+// Link parameters
+function getLinks() {
+  return {
+    L1: +document.getElementById('L1').value,
+    L2: +document.getElementById('L2').value,
+    L3: +document.getElementById('L3').value,
+    L4: +document.getElementById('L4').value,
+    L5: +document.getElementById('L5').value,
+    L6: +document.getElementById('L6').value,
+    L7: +document.getElementById('L7').value,
+  };
+}
+
+// Hook up sliders
+['L1','L2','L3','L4','L5','L6','L7','traceLen','groundOff'].forEach(id => {
+  const el = document.getElementById(id);
+  const val = document.getElementById('val-'+id);
+  el.addEventListener('input', () => {
+    val.textContent = el.value;
+    tracePoints = [];
+    allCyclePoints = [];
+    recomputeMetrics();
+    draw();
+  });
+});
+
+document.getElementById('speed').addEventListener('input', function() {
+  document.getElementById('val-speed').textContent = this.value + '×';
+});
+
+// ── Klann linkage kinematics ──────────────────────────────────────────────
+// Origin: crank pivot O2. Second fixed pivot O4 at (L1, 0).
+// Crank: O2→A, length L2
+// Triangle on coupler:
+//   A→B = L3 (coupler connecting rod)
+//   O4→C = L4 (first rocker)
+//   B→C = L5 (connecting link)
+//   C→D = L6 (second rocker / shin)
+//   A→D modeled via foot extension from D along leg
+//   Foot E computed from D extended by L7
+
+function solveKlann(theta, links) {
+  const { L1, L2, L3, L4, L5, L6, L7 } = links;
+
+  // Fixed pivots
+  const O2 = { x: 0, y: 0 };
+  const O4 = { x: L1, y: 0 };
+
+  // Crank end A
+  const A = {
+    x: L2 * Math.cos(theta),
+    y: L2 * Math.sin(theta)
+  };
+
+  // Solve four-bar: O2(fixed)→A(crank end)→B→O4(fixed)
+  // We need B such that |A-B|=L3, |O4-B|=L4
+  const pt = twoCircleIntersect(A.x, A.y, L3, O4.x, O4.y, L4);
+  if (!pt) return null;
+  // pick lower intersection (y positive = downward in screen)
+  const B = pt.y1 > pt.y2 ? { x: pt.x1, y: pt.y1 } : { x: pt.x2, y: pt.y2 };
+
+  // Now solve second 4-bar: A→B coupler drives C
+  // C: |B-C|=L5, |O4-C|=L6 — wait, O4 already used; use a helper pivot.
+  // Classic Klann: two sub-four-bars sharing the coupler point B.
+  // Sub-linkage 2: B as input, find D such that |B-D|=L5, |A-D|=L6
+  // Then foot E = D + direction * L7
+  const pt2 = twoCircleIntersect(B.x, B.y, L5, A.x, A.y, L6);
+  if (!pt2) return null;
+  // pick upper (lower y value in screen = less positive)
+  const D = pt2.y1 < pt2.y2 ? { x: pt2.x1, y: pt2.y1 } : { x: pt2.x2, y: pt2.y2 };
+
+  // Foot E: extend from D in direction D from A, scaled by L7
+  const dirAD = { x: D.x - A.x, y: D.y - A.y };
+  const lenAD = Math.hypot(dirAD.x, dirAD.y);
+  if (lenAD < 1e-6) return null;
+  const E = {
+    x: D.x + (dirAD.x / lenAD) * L7,
+    y: D.y + (dirAD.y / lenAD) * L7
+  };
+
+  return { O2, O4, A, B, D, E };
+}
+
+function twoCircleIntersect(x1, y1, r1, x2, y2, r2) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const d = Math.hypot(dx, dy);
+  if (d > r1 + r2 + 1e-6 || d < Math.abs(r1 - r2) - 1e-6 || d < 1e-9) return null;
+  const a = (r1*r1 - r2*r2 + d*d) / (2*d);
+  const h = Math.sqrt(Math.max(0, r1*r1 - a*a));
+  const mx = x1 + a*dx/d, my = y1 + a*dy/d;
+  return {
+    x1: mx + h*dy/d, y1: my - h*dx/d,
+    x2: mx - h*dy/d, y2: my + h*dx/d
+  };
+}
+
+// ── Precompute full cycle trace ───────────────────────────────────────────
+function computeFullCycle(links) {
+  const pts = [];
+  for (let t = 0; t < 360; t += 1) {
+    const state = solveKlann(t * Math.PI / 180, links);
+    if (state) pts.push({ ...state.E, theta: t });
+  }
+  return pts;
+}
+
+function recomputeMetrics() {
+  const links = getLinks();
+  const pts = computeFullCycle(links);
+  allCyclePoints = pts;
+  if (pts.length < 10) { clearMetrics(); return; }
+
+  const xs = pts.map(p => p.x);
+  const ys = pts.map(p => p.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+
+  const sl = maxX - minX;
+  const sh = maxY - minY;
+  // "above ground" portion: upper half of trajectory
+  const midY = (minY + maxY) / 2;
+  const aboveGround = pts.filter(p => p.y < midY);
+  const stepHeight = aboveGround.length > 0
+    ? midY - Math.min(...aboveGround.map(p => p.y))
+    : sh / 2;
+
+  document.getElementById('m-steplen').textContent = sl.toFixed(1);
+  document.getElementById('m-stepht').textContent = stepHeight.toFixed(1);
+  document.getElementById('m-stride').textContent = sh.toFixed(1);
+  document.getElementById('m-ratio').textContent = sh > 0 ? (sl / sh).toFixed(2) : '—';
+  document.getElementById('m-pts').textContent = pts.length;
+
+  stepLen = sl; stepHt = stepHeight; strideDepth = sh;
+}
+
+function clearMetrics() {
+  ['m-steplen','m-stepht','m-stride','m-ratio'].forEach(id => {
+    document.getElementById(id).textContent = '—';
+  });
+  document.getElementById('m-pts').textContent = '0';
+}
+
+// ── Drawing ───────────────────────────────────────────────────────────────
+function draw() {
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  // Background grid
+  ctx.strokeStyle = 'rgba(30,45,61,0.5)';
+  ctx.lineWidth = 1;
+  const gs = 30;
+  for (let x = 0; x < W; x += gs) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for (let y = 0; y < H; y += gs) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+  const links = getLinks();
+  const groundOff = +document.getElementById('groundOff').value;
+  const cx = W * 0.35, cy = H * 0.38 + groundOff;
+
+  // Scale so mechanism fits
+  const maxLink = Math.max(links.L1, links.L2, links.L3, links.L4, links.L5, links.L6, links.L7);
+  const scale = Math.min(W, H) / (maxLink * 5);
+
+  function toScreen(p) {
+    return { x: cx + p.x * scale, y: cy + p.y * scale };
+  }
+
+  // Draw full cycle trace (precomputed)
+  if (allCyclePoints.length > 1) {
+    ctx.beginPath();
+    ctx.setLineDash([]);
+    let first = true;
+    for (const pt of allCyclePoints) {
+      const sp = toScreen(pt);
+      if (first) { ctx.moveTo(sp.x, sp.y); first = false; }
+      else ctx.lineTo(sp.x, sp.y);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = 'rgba(0,212,255,0.15)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  // Draw live trace
+  const traceMaxDeg = +document.getElementById('traceLen').value;
+  if (tracePoints.length > 1) {
+    ctx.beginPath();
+    ctx.setLineDash([]);
+    const recent = tracePoints.slice(-Math.round(traceMaxDeg));
+    let first = true;
+    for (const tp of recent) {
+      const sp = toScreen(tp);
+      if (first) { ctx.moveTo(sp.x, sp.y); first = false; }
+      else ctx.lineTo(sp.x, sp.y);
+    }
+    ctx.strokeStyle = 'rgba(0,212,255,0.85)';
+    ctx.lineWidth = 2.5;
+    ctx.shadowColor = '#00d4ff';
+    ctx.shadowBlur = 8;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
+  // Solve current state
+  const state = solveKlann(crankAngle, links);
+  if (!state) {
+    drawGroundLine(cx, cy, W, scale, links, groundOff);
+    return;
+  }
+
+  const { O2, O4, A, B, D, E } = state;
+
+  function drawLink(p1, p2, color, width=3) {
+    const sp1 = toScreen(p1), sp2 = toScreen(p2);
+    ctx.beginPath();
+    ctx.moveTo(sp1.x, sp1.y);
+    ctx.lineTo(sp2.x, sp2.y);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.setLineDash([]);
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 6;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
+  function drawJoint(p, color, r=5) {
+    const sp = toScreen(p);
+    ctx.beginPath();
+    ctx.arc(sp.x, sp.y, r, 0, Math.PI*2);
+    ctx.fillStyle = color;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 10;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.beginPath();
+    ctx.arc(sp.x, sp.y, r+2, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  // Frame line
+  drawLink(O2, O4, '#1e2d3d', 4);
+
+  // Links
+  drawLink(O2, A, '#ff6b35', 3);   // crank
+  drawLink(A, B, '#ffd700', 2.5);   // coupler 1
+  drawLink(O4, B, '#7fff00', 2.5);  // rocker A
+  drawLink(B, D, '#ffd700', 2);     // coupler 2
+  drawLink(A, D, '#7fff00', 2);     // rocker B / shin
+  drawLink(D, E, '#fff', 2);        // foot rod
+
+  // Joints
+  drawJoint(O2, '#ff6b35', 7);
+  drawJoint(O4, '#7fff00', 7);
+  drawJoint(A, '#ffd700', 5);
+  drawJoint(B, '#ffd700', 4);
+  drawJoint(D, '#ffffff', 4);
+
+  // Foot
+  const sE = toScreen(E);
+  ctx.beginPath();
+  ctx.arc(sE.x, sE.y, 6, 0, Math.PI*2);
+  ctx.fillStyle = '#00d4ff';
+  ctx.shadowColor = '#00d4ff';
+  ctx.shadowBlur = 15;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Ground line and metrics overlay
+  drawGroundLine(cx, cy, W, scale, links, groundOff, state);
+
+  // Status bar
+  document.getElementById('st-angle').textContent = Math.round(crankAngle * 180 / Math.PI) + '°';
+  document.getElementById('st-fx').textContent = E.x.toFixed(1);
+  document.getElementById('st-fy').textContent = E.y.toFixed(1);
+
+  // Metrics overlay on canvas
+  if (allCyclePoints.length > 0 && stepLen !== null) {
+    const xs = allCyclePoints.map(p=>p.x), ys = allCyclePoints.map(p=>p.y);
+    const minX = Math.min(...xs), maxX = Math.max(...xs);
+    const minY = Math.min(...ys), maxY = Math.max(...ys);
+
+    // Step length arrow
+    const ySL = cy + maxY * scale + 22;
+    const xL = cx + minX * scale, xR = cx + maxX * scale;
+    ctx.setLineDash([4,3]);
+    ctx.strokeStyle = 'rgba(0,212,255,0.5)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(xL, cy + minY*scale); ctx.lineTo(xL, ySL+10); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(xR, cy + minY*scale); ctx.lineTo(xR, ySL+10); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.strokeStyle = '#00d4ff';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(xL, ySL); ctx.lineTo(xR, ySL); ctx.stroke();
+    // arrowheads
+    arrow(ctx, xL, ySL, xL+8, ySL, '#00d4ff');
+    arrow(ctx, xR, ySL, xR-8, ySL, '#00d4ff');
+    ctx.font = '11px Share Tech Mono';
+    ctx.fillStyle = '#00d4ff';
+    ctx.textAlign = 'center';
+    ctx.fillText('STEP LENGTH: ' + stepLen.toFixed(1) + 'px', (xL+xR)/2, ySL - 6);
+
+    // Step height arrow
+    const xSH = cx + maxX * scale + 22;
+    const yT = cy + minY * scale, yBot = cy + maxY * scale;
+    ctx.setLineDash([4,3]);
+    ctx.strokeStyle = 'rgba(127,255,0,0.5)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(cx + minX*scale, yT); ctx.lineTo(xSH+10, yT); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx + minX*scale, yBot); ctx.lineTo(xSH+10, yBot); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.strokeStyle = '#7fff00';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(xSH, yT); ctx.lineTo(xSH, yBot); ctx.stroke();
+    arrow(ctx, xSH, yT, xSH, yT+8, '#7fff00');
+    arrow(ctx, xSH, yBot, xSH, yBot-8, '#7fff00');
+    ctx.save();
+    ctx.translate(xSH + 16, (yT+yBot)/2);
+    ctx.rotate(Math.PI/2);
+    ctx.fillStyle = '#7fff00';
+    ctx.textAlign = 'center';
+    ctx.fillText('STRIDE: ' + strideDepth.toFixed(1) + 'px', 0, 0);
+    ctx.restore();
+  }
+}
+
+function arrow(ctx, x1, y1, x2, y2, color) {
+  const angle = Math.atan2(y2-y1, x2-x1);
+  const size = 6;
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - size*Math.cos(angle-0.5), y2 - size*Math.sin(angle-0.5));
+  ctx.lineTo(x2 - size*Math.cos(angle+0.5), y2 - size*Math.sin(angle+0.5));
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+function drawGroundLine(cx, cy, W, scale, links, groundOff, state) {
+  // Estimate ground level = lowest foot Y in full cycle
+  if (allCyclePoints.length === 0) return;
+  const maxY = Math.max(...allCyclePoints.map(p=>p.y));
+  const gy = cy + maxY * scale + 10;
+  ctx.beginPath();
+  ctx.setLineDash([8, 4]);
+  ctx.strokeStyle = 'rgba(255,80,80,0.5)';
+  ctx.lineWidth = 1.5;
+  ctx.moveTo(0, gy);
+  ctx.lineTo(W, gy);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(255,80,80,0.6)';
+  ctx.font = '10px Share Tech Mono';
+  ctx.textAlign = 'left';
+  ctx.fillText('■ GROUND', 10, gy - 4);
+}
+
+// ── Animation loop ────────────────────────────────────────────────────────
+function animate(timestamp) {
+  if (!animRunning) return;
+  const dt = timestamp - lastTime;
+  if (dt < 1000 / TARGET_FPS) { animId = requestAnimationFrame(animate); return; }
+  lastTime = timestamp;
+
+  const spd = +document.getElementById('speed').value;
+  crankAngle += spd * 0.03;
+  if (crankAngle > 2 * Math.PI) crankAngle -= 2 * Math.PI;
+
+  const links = getLinks();
+  const state = solveKlann(crankAngle, links);
+  if (state) tracePoints.push({ x: state.E.x, y: state.E.y });
+  if (tracePoints.length > 1440) tracePoints.shift();
+
+  const rpm = (spd * 0.03 * TARGET_FPS / (2*Math.PI) * 60).toFixed(1);
+  document.getElementById('st-rpm').textContent = rpm;
+  document.getElementById('st-status').textContent = 'RUNNING';
+  document.getElementById('st-status').style.color = '#7fff00';
+
+  draw();
+  animId = requestAnimationFrame(animate);
+}
+
+// ── Button handlers ───────────────────────────────────────────────────────
+document.getElementById('btnPlay').addEventListener('click', function() {
+  if (animRunning) {
+    animRunning = false;
+    cancelAnimationFrame(animId);
+    this.textContent = '⏵ PLAY';
+    document.getElementById('st-status').textContent = 'PAUSED';
+    document.getElementById('st-status').style.color = '#ff6b35';
+  } else {
+    animRunning = true;
+    lastTime = performance.now();
+    this.textContent = '⏸ PAUSE';
+    animId = requestAnimationFrame(animate);
+  }
+});
+
+document.getElementById('btnStep').addEventListener('click', () => {
+  crankAngle += 5 * Math.PI / 180;
+  if (crankAngle > 2*Math.PI) crankAngle -= 2*Math.PI;
+  const links = getLinks();
+  const state = solveKlann(crankAngle, links);
+  if (state) tracePoints.push({ x: state.E.x, y: state.E.y });
+  draw();
+});
+
+document.getElementById('btnReset').addEventListener('click', () => {
+  crankAngle = 0;
+  draw();
+});
+
+document.getElementById('btnClearTrace').addEventListener('click', () => {
+  tracePoints = [];
+  draw();
+});
+
+// Init
+recomputeMetrics();
+draw();
+</script>
+</body>
+</html>
